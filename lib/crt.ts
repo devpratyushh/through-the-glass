@@ -1,5 +1,5 @@
 import * as T from 'three';
-import {sceneProgress} from './journey';
+import {chapterAt, chapterStarts, journeyDistance} from './journey';
 import {createTVDemo} from './tv-demo';
 import {detailCRT} from './crt-detail';
 import {RoomEnvironment} from 'three/examples/jsm/environments/RoomEnvironment.js';
@@ -31,14 +31,151 @@ export function mountCRT(
  const detail=detailCRT({casing,front,glass:glassGroup,tube,board});
  const shellMaterials:T.MeshStandardMaterial[]=[];casing.traverse(o=>{if(o instanceof T.Mesh){o.material=o.material.clone();o.material.transparent=true;shellMaterials.push(o.material)}});
  const raycaster=new T.Raycaster(),mouse=new T.Vector2();const targets=[...detail.branches.map(b=>({obj:b.group,id:b.id})),{obj:beamGroup,id:'samerow'},{obj:layer,id:'predictors'},{obj:board,id:'gharlabs'}];const click=(e:MouseEvent)=>{const r=host.getBoundingClientRect();mouse.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);raycaster.setFromCamera(mouse,camera);const hit=raycaster.intersectObject(screen)[0];if(hit?.uv&&tvDemo.hitTest(hit.uv.x,hit.uv.y)){dirty=true;return;}for(const t of targets)if(t.obj.visible&&raycaster.intersectObject(t.obj,true).length){document.getElementById(t.id)?.scrollIntoView({behavior:'smooth'});break}};renderer.domElement.addEventListener('click',click);
- const clamp=T.MathUtils.clamp,lerp=T.MathUtils.lerp,smooth=(a:number,b:number,p:number)=>T.MathUtils.smoothstep(p,a,b);let hasRendered=false,disposed=false;let raf=0,dirty=true,lastP=-1,active=true,lastChapter=-1,chapterStarted=0;const reduced=matchMedia('(prefers-reduced-motion: reduce)');let w=0,h=0;const resize=()=>{w=host.clientWidth;h=host.clientHeight;renderer.setSize(w,h);camera.aspect=w/h;camera.updateProjectionMatrix();dirty=true};const ro=new ResizeObserver(resize);ro.observe(host);resize();const scroll=()=>{dirty=true};window.addEventListener('scroll',scroll,{passive:true});window.addEventListener('motionchange',scroll);reduced.addEventListener('change',scroll);window.addEventListener('tv-demo',scroll);const vis=()=>{active=!document.hidden;dirty=true};document.addEventListener('visibilitychange',vis);
- function render(t:number){raf=requestAnimationFrame(render);if(!active)return;const rawProgress=clamp(-section.getBoundingClientRect().top/(section.offsetHeight-h),0,1),p=sceneProgress(rawProgress),paused=document.documentElement.dataset.motion==='paused'||reduced.matches;if(rawProgress!==lastP){onProgress(rawProgress);dirty=true;lastP=rawProgress}const ch=Math.min(4,Math.floor(p*5));if(ch!==lastChapter){lastChapter=ch;chapterStarted=t;dirty=true}const growing=ch>=2&&t-chapterStarted<850;if(!dirty&&!growing&&(paused||(p<.2&&!tvDemo.needsOpeningFrame(t))||(p>=.2&&p<.32)||p>.92))return;dirty=false;const q=p,mobile=w<800;const network=rawProgress>=.7&&rawProgress<.82;const networkFocus=smooth(.68,.715,rawProgress)*(1-smooth(.805,.85,rawProgress));const tvFocus=Math.max(smooth(.37,.415,p)*(1-smooth(.565,.615,p)),networkFocus);
- const open=smooth(.12,.4,q),inside=smooth(.4,.75,q),exit=smooth(.8,1,q);casing.position.set(2*open,4*open,-1.4*open);shellMaterials.forEach(m=>m.opacity=1-smooth(.22,.4,q));casing.visible=q<.4;casing.rotation.z=-.08*open;front.position.set(-3.6*open,0,open*.7);glassGroup.position.set(-2.3*open,0,open*1.4);phosphor.position.z=open*.65;board.position.y=-.6*open;root.rotation.set(.04+open*.07,-.12-open*.25-inside*.2,0);root.position.set(mobile?0:1.25,mobile?lerp(-.9,-1.35,inside):0,0);root.scale.setScalar(mobile?lerp(.82,.68,open):1);
- const camStart=new T.Vector3(.7,.45,mobile?10.2:9),camSide=new T.Vector3(7,1.5,5.5),camInside=new T.Vector3(5,1.4,-6.7),camEnd=new T.Vector3(4.6,4.5,5.6);camera.position.copy(camStart).lerp(camSide,open);camera.position.lerp(camInside,inside);camera.position.lerp(camEnd,exit);const look=new T.Vector3(mobile?0:.65,mobile?-.25:0,lerp(0,-.65,inside));// Return the separated faceplate to a readable front view for the live demo.
- camera.position.lerp(new T.Vector3(mobile?.3:1.5,.2,mobile?9.8:8.5),tvFocus);root.rotation.y=lerp(root.rotation.y,-.06,tvFocus);root.rotation.x=lerp(root.rotation.x,0,tvFocus);root.scale.setScalar(lerp(root.scale.x,mobile?.82:1,tvFocus));root.position.y=lerp(root.position.y,mobile?-1.1:0,tvFocus);front.position.lerp(new T.Vector3(0,0,1),tvFocus);glassGroup.position.lerp(new T.Vector3(0,0,1),tvFocus);look.lerp(new T.Vector3(mobile?0:.55,mobile?-.15:0,.4),tvFocus);const labFocus=smooth(.74,.82,q)*(1-networkFocus);tube.position.y=3.8*labFocus;front.position.y=5*labFocus;glassGroup.position.y=5*labFocus;phosphor.position.y=5*labFocus;root.updateMatrixWorld(true);const chipTarget=detail.storage.getWorldPosition(new T.Vector3());const labCamera=chipTarget.clone().add(new T.Vector3(mobile?1:1.6,mobile?2.4:2.5, mobile?2.8:2.6));camera.position.lerp(labCamera,labFocus);const labLook=chipTarget.clone().add(new T.Vector3(mobile?0:-.7,mobile?.75:0,0));look.lerp(labLook,labFocus);// Final scroll beat: continue from the whole board into the Q2 transistor.
- const transistorFocus=smooth(.86,.995,q);const transistorTarget=detail.storage.localToWorld(new T.Vector3(-.08,.28,.26));const transistorCamera=transistorTarget.clone().add(new T.Vector3(mobile?.65:.85,mobile?1.35:1.2,mobile?1.8:1.5));camera.position.lerp(transistorCamera,transistorFocus);look.lerp(transistorTarget.clone().add(new T.Vector3(mobile?0:-.28,mobile?.28:0,0)),transistorFocus);detail.focusMaterial.emissiveIntensity=labFocus*.06+transistorFocus*.08;detail.updateLeads();camera.lookAt(look);if(tvDemo.draw(t,ch===2||ch===0,paused,ch===0,network)){texture.needsUpdate=true;}bead.position.z=.8-((t*.0006)%1)*2.5;beamGroup.visible=q>.2;screenMat.transparent=true;screenMat.opacity=lerp(1-smooth(.27,.47,q)*.88,1,tvFocus);detail.branches.forEach((b,i)=>{const selected=ch===i+2;const growth=paused?1:T.MathUtils.smoothstep(t-chapterStarted,0,700);b.group.visible=selected&&p>.39&&(rawProgress<.7||rawProgress>=.82);const length=2.4*growth;for(const mesh of [b.core,...b.halos]){mesh.scale.y=length;mesh.position.x=-length/2;}b.point.position.x=-length;b.spark.scale.setScalar(.16+.22*(1-growth));b.spark.material.opacity=.8;b.pulse.position.x=-length*((t*.0007)%1);b.sprite.position.set(-length-.25,.23,0);(b.sprite.material as T.SpriteMaterial).opacity=growth;});renderer.render(scene,camera);
-  if(!hasRendered){
-   hasRendered=true;
+ const {clamp, lerp, smoothstep: smooth} = T.MathUtils;
+ const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+ const branchChapters = [2, 3, 5];
+ let hasRendered = false, disposed = false;
+ let raf = 0, dirty = true, needsMeasurement = true;
+ let target = 0, progress = 0, publishedProgress = -1, previousTime = 0;
+ let visible = true;
+ let width = 0;
+
+ function invalidateScroll() {
+  needsMeasurement = true;
+  dirty = true;
+ }
+ function invalidateScene() { dirty = true; }
+ function resize() {
+  width = host.clientWidth;
+  const height = host.clientHeight;
+  renderer.setSize(width, height);
+  camera.aspect = width / Math.max(1, height);
+  camera.updateProjectionMatrix();
+  invalidateScroll();
+ }
+ const resizeObserver = new ResizeObserver(resize);
+ resizeObserver.observe(host);
+ resize();
+ window.addEventListener('scroll', invalidateScroll, {passive:true});
+ document.addEventListener('visibilitychange', invalidateScroll);
+ window.addEventListener('motionchange', invalidateScene);
+ reduced.addEventListener('change', invalidateScene);
+ window.addEventListener('tv-demo', invalidateScene);
+
+ function render(time: number) {
+  raf = requestAnimationFrame(render);
+  if (document.hidden) return;
+
+  // Read layout only when scrolling or resizing, and follow the same distance as the chapter rail.
+  if (needsMeasurement) {
+   const bounds = section.getBoundingClientRect();
+   visible = bounds.bottom > 0 && bounds.top < window.innerHeight;
+   target = clamp(-bounds.top / journeyDistance(section, host), 0, 1);
+   if (!hasRendered || !visible) progress = target;
+   needsMeasurement = false;
+  }
+  if (!visible && hasRendered) return;
+
+  const paused = document.documentElement.dataset.motion === 'paused' || reduced.matches;
+  const delta = Math.min(32, time - previousTime);
+  previousTime = time;
+  const moving = progress !== target;
+  // Take the edge off wheel steps without waiting for a full animation to finish.
+  progress = paused || Math.abs(target - progress) < .00025
+   ? target
+   : lerp(progress, target, 1 - Math.exp(-delta / 48));
+  if (progress !== publishedProgress) {
+   onProgress(progress);
+   publishedProgress = progress;
+  }
+
+  const p = progress;
+  const chapter = chapterAt(p);
+  const animating = !paused && (chapter === 0 ? tvDemo.needsOpeningFrame(time) : chapter >= 2 && p < .96);
+  if (!dirty && !moving && !animating) return;
+  dirty = false;
+
+  const mobile = width < 800;
+  // Overlap the camera moves so each part starts responding before the next chapter opens.
+  const open = .3 * clamp(p / .36, 0, 1) + .7 * smooth(p, 0, .36);
+  const inside = smooth(p, .28, .73);
+  const exit = smooth(p, .75, 1);
+  const sameRowFocus = smooth(p, .26, .42) * (1 - smooth(p, .47, .65));
+  const networkFocus = smooth(p, .60, .75) * (1 - smooth(p, .79, .91));
+  const tvFocus = Math.max(sameRowFocus, networkFocus);
+
+  casing.position.set(2*open, 4*open, -1.4*open);
+  shellMaterials.forEach(material => material.opacity = 1 - smooth(p, .2, .38));
+  casing.visible = p < .38;
+  casing.rotation.z = -.08*open;
+  front.position.set(-3.6*open, 0, open*.7);
+  glassGroup.position.set(-2.3*open, 0, open*1.4);
+  phosphor.position.z = open*.65;
+  board.position.y = -.6*open;
+  root.rotation.set(.04+open*.07, -.12-open*.25-inside*.2, 0);
+  root.position.set(mobile ? 0 : 1.25, mobile ? lerp(-.9, -1.35, inside) : 0, 0);
+  root.scale.setScalar(mobile ? lerp(.82, .68, open) : 1);
+
+  camera.position.set(.7, .45, mobile ? 10.2 : 9)
+   .lerp(new T.Vector3(7, 1.5, 5.5), open)
+   .lerp(new T.Vector3(5, 1.4, -6.7), inside)
+   .lerp(new T.Vector3(4.6, 4.5, 5.6), exit);
+  const look = new T.Vector3(mobile ? 0 : .65, mobile ? -.25 : 0, lerp(0, -.65, inside));
+
+  // Bring the faceplate forward for each interactive screen chapter.
+  camera.position.lerp(new T.Vector3(mobile ? .3 : 1.5, .2, mobile ? 9.8 : 8.5), tvFocus);
+  root.rotation.y = lerp(root.rotation.y, -.06, tvFocus);
+  root.rotation.x = lerp(root.rotation.x, 0, tvFocus);
+  root.scale.setScalar(lerp(root.scale.x, mobile ? .82 : 1, tvFocus));
+  root.position.y = lerp(root.position.y, mobile ? -1.1 : 0, tvFocus);
+  front.position.lerp(new T.Vector3(0, 0, 1), tvFocus);
+  glassGroup.position.lerp(new T.Vector3(0, 0, 1), tvFocus);
+  look.lerp(new T.Vector3(mobile ? 0 : .55, mobile ? -.15 : 0, .4), tvFocus);
+
+  // Move into the circuit board gradually as the screen chapter ends.
+  const labFocus = smooth(p, .79, .94);
+  tube.position.y = 3.8 * labFocus;
+  front.position.y = 5 * labFocus;
+  glassGroup.position.y = 5 * labFocus;
+  phosphor.position.y = 5 * labFocus;
+  root.updateMatrixWorld(true);
+  const chipTarget = detail.storage.getWorldPosition(new T.Vector3());
+  camera.position.lerp(chipTarget.clone().add(new T.Vector3(mobile ? 1 : 1.6, mobile ? 2.4 : 2.5, mobile ? 2.8 : 2.6)), labFocus);
+  look.lerp(chipTarget.clone().add(new T.Vector3(mobile ? 0 : -.7, mobile ? .75 : 0, 0)), labFocus);
+
+  const transistorFocus = smooth(p, .88, 1);
+  const transistorTarget = detail.storage.localToWorld(new T.Vector3(-.08, .28, .26));
+  camera.position.lerp(transistorTarget.clone().add(new T.Vector3(mobile ? .65 : .85, mobile ? 1.35 : 1.2, mobile ? 1.8 : 1.5)), transistorFocus);
+  look.lerp(transistorTarget.clone().add(new T.Vector3(mobile ? 0 : -.28, mobile ? .28 : 0, 0)), transistorFocus);
+  detail.focusMaterial.emissiveIntensity = labFocus*.06 + transistorFocus*.08;
+  detail.updateLeads();
+  camera.lookAt(look);
+
+  if (tvDemo.draw(time, chapter === 2 || chapter === 0, paused, chapter === 0, chapter === 4)) texture.needsUpdate = true;
+  bead.position.z = .8 - ((time*.0006) % 1)*2.5;
+  beamGroup.visible = p > .16;
+  screenMat.transparent = true;
+  screenMat.opacity = lerp(1 - smooth(p, .25, .44)*.88, 1, tvFocus);
+  detail.branches.forEach((branch, i) => {
+   const start = chapterStarts[branchChapters[i]];
+   const growth = smooth(p, start, start + .07);
+   branch.group.visible = chapter === branchChapters[i] && growth > 0;
+   if (!branch.group.visible) return;
+   const length = 2.4 * growth;
+   for (const mesh of [branch.core, ...branch.halos]) {
+    mesh.scale.y = length;
+    mesh.position.x = -length/2;
+   }
+   branch.point.position.x = -length;
+   branch.spark.scale.setScalar(.16 + .22*(1 - growth));
+   branch.spark.material.opacity = .8;
+   branch.pulse.position.x = -length * ((time*.0007) % 1);
+   branch.sprite.position.set(-length - .25, .23, 0);
+   branch.sprite.material.opacity = growth;
+  });
+  renderer.render(scene, camera);
+  if (!hasRendered) {
+   hasRendered = true;
    onReady();
   }
  }
@@ -46,7 +183,7 @@ export function mountCRT(
  function dispose(){
   if(disposed)return;
   disposed=true;
-  cancelAnimationFrame(raf);tvDemo.dispose();ro.disconnect();window.removeEventListener('scroll',scroll);window.removeEventListener('motionchange',scroll);reduced.removeEventListener('change',scroll);window.removeEventListener('tv-demo',scroll);document.removeEventListener('visibilitychange',vis);renderer.domElement.removeEventListener('click',click);scene.traverse(o=>{if(o instanceof T.Mesh||o instanceof T.Line){o.geometry.dispose();const mats=Array.isArray(o.material)?o.material:[o.material];mats.forEach(m=>m.dispose())}});detail.textures.forEach(t=>t.dispose());environment.dispose();texture.dispose();renderer.dispose();renderer.domElement.remove();
+  cancelAnimationFrame(raf);tvDemo.dispose();resizeObserver.disconnect();window.removeEventListener('scroll',invalidateScroll);document.removeEventListener('visibilitychange',invalidateScroll);window.removeEventListener('motionchange',invalidateScene);reduced.removeEventListener('change',invalidateScene);window.removeEventListener('tv-demo',invalidateScene);renderer.domElement.removeEventListener('click',click);scene.traverse(o=>{if(o instanceof T.Mesh||o instanceof T.Line){o.geometry.dispose();const mats=Array.isArray(o.material)?o.material:[o.material];mats.forEach(m=>m.dispose())}});detail.textures.forEach(t=>t.dispose());environment.dispose();texture.dispose();renderer.dispose();renderer.domElement.remove();
  }
 
  raf=requestAnimationFrame(time=>{
