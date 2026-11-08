@@ -7,11 +7,37 @@ import {chapterAt,chapterPositions} from '../lib/journey';
 import {useEffect,useRef,useState} from 'react';
 const stops=[['The surface','Every image starts somewhere.'],['Beneath the glass','A little further in.'],['Signal & timing','Better, together.'],['Patterns in the noise','Follow the signal.'],['Across the traces','Connections tell a story.'],['The supporting cast','A place for everything.']];
 export default function Home(){
- const stage=useRef<HTMLDivElement>(null),journey=useRef<HTMLElement>(null); const [chapter,setChapter]=useState(0),[progress,setProgress]=useState(0),[paused,setPaused]=useState(false),[fallback,setFallback]=useState(false);
- useEffect(()=>{let dispose:(()=>void)|undefined,cancelled=false;import('../lib/crt').then(({mountCRT})=>{if(!cancelled&&stage.current&&journey.current)try{dispose=mountCRT(stage.current,journey.current,(p)=>{setProgress(p);setChapter(chapterAt(p))});}catch{setFallback(true)}}).catch(()=>setFallback(true));return()=>{cancelled=true;dispose?.()}},[]);
+ const stage=useRef<HTMLDivElement>(null),journey=useRef<HTMLElement>(null); const [chapter,setChapter]=useState(0),[progress,setProgress]=useState(0),[paused,setPaused]=useState(false),[crtState,setCrtState]=useState<'loading'|'ready'|'unavailable'>('loading');
+ useEffect(()=>{
+  let dispose:(()=>void)|undefined;
+  let cancelled=false;
+  const unavailable=()=>{
+   if(!cancelled)setCrtState('unavailable');
+  };
+  import('../lib/crt').then(({mountCRT})=>{
+   if(cancelled||!stage.current||!journey.current)return;
+   dispose=mountCRT(stage.current,journey.current,(p)=>{
+    setProgress(p);
+    setChapter(chapterAt(p));
+   },()=>{
+    if(!cancelled)setCrtState('ready');
+   },unavailable);
+  }).catch(unavailable);
+  return()=>{cancelled=true;dispose?.()};
+ },[]);
  useEffect(()=>{document.documentElement.dataset.motion=paused?'paused':'on';window.dispatchEvent(new Event('motionchange'))},[paused]);
  return <main><header><a className="wordmark" href="#">p<span>.</span></a><a className="header-note" href="#about">PRATYUSH / PERSONAL EXPLORATIONS</a><nav><a href="#work">Work</a><a href="#photos">Photographs</a><a href="mailto:dev.pratyush@icloud.com">Say hello <span>↗</span></a></nav></header>
- <section className="journey" ref={journey} aria-label="Scroll through an exploded 3D cathode-ray television"><div className="sticky-scene"><div ref={stage} className="canvas-stage" aria-hidden="true"/>{fallback&&<div className="fallback-tv"><span>Pratyush.</span><p>I build things to understand them.</p></div>}
+ <section className="journey" ref={journey} aria-label="Scroll through an exploded 3D cathode-ray television"><div className="sticky-scene" data-crt-state={crtState}>
+ <div ref={stage} className="canvas-stage" aria-hidden="true"/>
+ {crtState!=='ready'&&<div className="crt-placeholder">
+  <div className="crt-placeholder-screen">
+   <span className="crt-placeholder-name">Pratyush.</span>
+   {crtState==='loading'
+    ? <><span className="crt-placeholder-status" role="status">Tuning signal…</span><span className="crt-placeholder-track" aria-hidden="true"/></>
+    : <span className="crt-placeholder-status">I build things to understand them.</span>}
+  </div>
+  <span className="crt-placeholder-led" aria-hidden="true"/>
+ </div>}
  <div className="topline"><span>FIG. 01 — THROUGH THE GLASS</span><span>AN EXPLORATION IN SIX PARTS</span></div>
  <div className={'opening '+(chapter===0?'visible':'')}><p className="eyebrow">DEVELOPER. PHOTOGRAPHER. CURIOUS HUMAN.</p><h1>There’s more<br/>on the <em>inside.</em></h1><p>I’m Pratyush. I build real-time tools,<br/>look for patterns, and take the long way home.</p>{chapter===0&&<EarlyRemote/>}</div>
  {chapter>0&&<div className={"chapter-copy "+(chapter===2?"tv-chapter":chapter===4?"aml-chapter":"")} key={chapter}><span className="eyebrow">0{chapter+1} / {stops[chapter][0]}</span><h2>{chapter===5&&progress>.9?<>A home for<br/><em>what you keep.</em></>:stops[chapter][1]}</h2><p>{chapter===5&&progress>.9?'Films, files, and the services around them. Ghar Labs brings my media and self-hosted tools together on a server at home, with centralised volumes and private access.':['','The casing comes away. The glass, the phosphor, the tube. Things get interesting when you look beneath the surface.','Two people, one moment. SameRow explores the timing that makes watching together feel effortless.','A beam traces an image. A model traces a pattern. My prediction projects look for structure in messy admission data.','An anti-money-laundering app in development, exploring transaction relationships with LINEMVNGNN. Follow the transactions on the CRT. Select an account, then trace the circular route.','Every system needs a foundation. Transistors, capacitors, and copper traces keep this one running. Ghar Labs is my own exploration of the infrastructure behind the experience.'][chapter]}</p>{chapter===5&&progress>.9&&<div className="storage-note"><span>MEDIA LIBRARY</span><span>CENTRALISED VOLUMES</span><span>MY OWN SERVER</span></div>}{chapter===2&&<TVRemote/>}{chapter===4&&<TransactionStudy onScreen/>}{chapter>1&&<a className="text-link" href={'#'+['','','samerow','predictors','aml','gharlabs'][chapter]}>Explore {['','','SameRow V2','the predictors','the AML study','Ghar Labs'][chapter]} ↗</a>}</div>}
