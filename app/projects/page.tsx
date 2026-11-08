@@ -1,6 +1,8 @@
 import type {Metadata} from 'next';
 import type {ReactNode} from 'react';
 import {sitePath} from '../../lib/site-path';
+import {githubProject, githubProjects} from '../../lib/github-projects';
+import GitHubProjectIndex from '../../components/github-project-index';
 import DomSelectionPreview from '../../components/dom-selection-preview';
 import {ForecastPreview, LabPreview} from '../../components/project-previews';
 import SameRowPreview from '../../components/samerow-preview';
@@ -11,8 +13,6 @@ export const metadata: Metadata = {
   description: 'Selected projects in real-time systems, data, and self-hosted infrastructure, plus certifications.',
 };
 
-const github = 'https://github.com/devpratyushh/';
-
 type ProjectProps = {
   id: string;
   number: string;
@@ -21,13 +21,17 @@ type ProjectProps = {
   description: string;
   tags: string;
   code?: {repo: string; label?: string}[];
-  live?: string;
   notes?: string[];
   children?: ReactNode;
 };
 
-function Project({id, number, category, title, description, tags, code, live, notes, children}: ProjectProps) {
+function Project({id, number, category, title, description, tags, code, notes, children}: ProjectProps) {
   const demoId = `${id}-demo`;
+  const repositories = (code ?? []).flatMap(({repo, label}) => {
+    const project = githubProject(repo);
+    return project ? [{...project, label}] : [];
+  });
+  const live = repositories.length === 1 ? repositories[0].live : undefined;
 
   return (
     <article id={id} className={`project${children ? '' : ' project-compact'}`} aria-labelledby={`${id}-title`}>
@@ -38,8 +42,8 @@ function Project({id, number, category, title, description, tags, code, live, no
         <p>{description}</p>
         <div className="tags">{tags}</div>
         <div className="project-actions">
-          {code ? code.map(({repo, label = 'GitHub'}) => (
-            <a key={repo} className="project-action" href={`${github}${repo}`} target="_blank" rel="noreferrer">{label} ↗</a>
+          {repositories.length ? repositories.map(({url, label = 'GitHub'}) => (
+            <a key={url} className="project-action" href={url} target="_blank" rel="noreferrer">{label} ↗</a>
           )) : <span className="project-action project-action-unavailable">GitHub unavailable</span>}
           {live ? (
             <a className="project-action project-action-primary" href={live} target="_blank" rel="noreferrer">Live demo ↗</a>
@@ -76,6 +80,7 @@ export default function ProjectsPage() {
         <span className="eyebrow">PROJECT INDEX / 2020—NOW</span>
         <h1 id="projects-title">Selected <em>projects.</em></h1>
         <p>Real-time systems, data experiments, and the things I built to learn how they work.</p>
+        <a className="text-link" href="#github-projects">Browse all {githubProjects.length} GitHub projects ↓</a>
       </section>
 
       <section id="work" className="paper project-list" aria-label="Project directory">
@@ -83,7 +88,7 @@ export default function ProjectsPage() {
 
         <Project id="samerow" number="01" category="REAL-TIME SYSTEMS" title="SameRow V2"
           description="A watch party for friends in different places. Share a room, see each other over a peer-to-peer call, and stay at the same point in the video."
-          tags="React / WebRTC / Socket.io / MSE" code={[{repo: 'Samerow-V2'}]} live="https://samerow-v2.vercel.app/"
+          tags="React / WebRTC / Socket.io / MSE" code={[{repo: 'Samerow-V2'}]}
           notes={[
             'WebRTC carries calls between peers. Socket.io keeps room state, including play, pause, and seek, in sync.',
             'The two playback tracks illustrate drift. Bring them together to see both screens reach the same moment.',
@@ -123,16 +128,18 @@ export default function ProjectsPage() {
           <h2 id="early-title">Start small. <em>Keep building.</em></h2>
           <Project id="circle" number="05" category="EARLY EXPERIMENTS" title="Circle"
             description="A multimedia social platform. Conversations and real-time interaction."
-            tags="JavaScript / Firebase" code={[{repo: 'circle'}]} live="https://devpratyushh.github.io/circle/" />
+            tags="JavaScript / Firebase" code={[{repo: 'circle'}]} />
           <Project id="talkative" number="06" category="EARLY EXPERIMENTS" title="Talkative"
             description="Disposable chat rooms from my early JavaScript experiments."
-            tags="JavaScript / DOM interactions" code={[{repo: 'Talkative'}]} live="https://devpratyushh.github.io/Talkative/" />
+            tags="JavaScript / DOM interactions" code={[{repo: 'Talkative'}]} />
           <Project id="dom-experiments" number="07" category="EARLY EXPERIMENTS" title="DOM experiments"
             description="Learning how clicks, events, and state change a page, including a browser extension that re-enables blocked page interactions."
             tags="JavaScript / Browser extensions" code={[{repo: 'Copy-Past-Pro'}]}>
             <DomSelectionPreview />
           </Project>
         </section>
+
+        <GitHubProjectIndex projects={githubProjects} />
 
         <section id="certifications" className="certifications" aria-labelledby="certifications-title">
           <div className="section-label"><span>LEARNING RECORD</span><span>CREDENTIALS</span></div>

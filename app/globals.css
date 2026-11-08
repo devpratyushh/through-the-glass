@@ -144,3 +144,26 @@ a.project-action-primary:hover { background: #3c5140; }
 @media (max-width: 800px) {
   .crt-placeholder { top: 61%; right: 21%; width: min(58vw, 49svh); }
 }
+
+.projects-masthead > .text-link { display: inline-block; margin-top: 14px; color: #e5aa80; }
+.github-index { margin-top: 56px; }
+.github-index-heading { display: flex; justify-content: space-between; align-items: end; flex-wrap: wrap; gap: 12px 24px; margin: 18px 0 28px; }
+.github-index-heading h2 { margin: 0; font: 400 clamp(44px, 6vw, 70px)/1 'Instrument Serif', Georgia, serif; }
+.github-index-heading .text-link { color: #6c4f38; }
+.github-index-controls { display: flex; align-items: center; gap: 10px 16px; flex-wrap: wrap; font-size: 12px; }
+.github-index-controls input[type='search'] { flex: 1 1 220px; min-width: 0; max-width: 390px; padding: 10px 12px; border: 1px solid #b7a994; border-radius: 0; background: #f4eee2; color: var(--ink); font: inherit; }
+.github-demo-filter { display: flex; align-items: center; gap: 6px; }
+.github-demo-filter input { accent-color: #2c3c2d; }
+.github-result-count, .github-index-empty { color: #6a655a; font-size: 12px; }
+.github-project-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 30px; margin: 20px 0 0; padding: 0; list-style: none; }
+.github-project-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; min-width: 0; padding: 16px 0; border-top: 1px solid #c8c0af; }
+.github-project-row > div:first-child { flex: 1 1 145px; min-width: 0; }
+.github-project-row h3 { margin: 0; overflow-wrap: anywhere; font: 22px/1.1 'Instrument Serif', Georgia, serif; }
+.github-project-row p { margin: 6px 0 0; color: #6a655a; font-size: 12px; line-height: 1.5; }
+.github-project-row .tags:not(:empty) { margin-top: 6px; }
+.github-row-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.github-row-actions .project-action { min-height: 32px; padding: 6px 9px; }
+@media (max-width: 760px) {
+  .github-project-grid { grid-template-columns: 1fr; }
+  .github-index-controls > label:first-child { flex-basis: 100%; }
+}
