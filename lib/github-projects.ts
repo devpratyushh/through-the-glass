@@ -5,6 +5,7 @@ export type GitHubProject = {
   url: string;
   language?: string;
   summary?: string;
+  description?: string;
   live?: string;
   fork?: boolean;
   archived?: boolean;

@@ -8,15 +8,15 @@ export default function GitHubProjectIndex({projects}: {projects: readonly GitHu
   const [demosOnly, setDemosOnly] = useState(false);
   const terms = query.toLowerCase().trim().split(/\s+/);
   const results = projects.filter(project => {
-    const searchable = `${project.name} ${project.language ?? ''} ${project.summary ?? ''}`.toLowerCase();
+    const searchable = `${project.name} ${project.language ?? ''} ${project.summary ?? ''} ${project.description ?? ''}`.toLowerCase();
     return (!demosOnly || project.live) && terms.every(term => searchable.includes(term));
   });
 
   return (
     <section id="github-projects" className="github-index" aria-labelledby="github-projects-title">
-      <div className="section-label"><span>THE FULL INDEX</span><span>{projects.length} PUBLIC REPOSITORIES</span></div>
+      <div className="section-label"><span>FROM GITHUB</span><span>{projects.length} PUBLIC REPOSITORIES</span></div>
       <div className="github-index-heading">
-        <h2 id="github-projects-title">All GitHub <em>projects.</em></h2>
+        <h3 id="github-projects-title">GitHub <em>projects.</em></h3>
         <a className="text-link" href="https://github.com/devpratyushh?tab=repositories" target="_blank" rel="noreferrer">View GitHub profile ↗</a>
       </div>
       <div className="github-index-controls">
@@ -33,8 +33,8 @@ export default function GitHubProjectIndex({projects}: {projects: readonly GitHu
           {results.map(project => (
             <li key={project.url} className="github-project-row" data-repository={project.name}>
               <div>
-                <h3>{project.name}</h3>
-                {project.summary && <p>{project.summary}</p>}
+                <h4>{project.name}</h4>
+                <p>{project.summary ?? project.description}</p>
                 <div className="tags">{[project.language, project.fork && 'Fork', project.archived && 'Archived'].filter(Boolean).join(' · ')}</div>
               </div>
               <div className="github-row-actions">

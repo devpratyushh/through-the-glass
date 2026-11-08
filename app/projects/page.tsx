@@ -64,6 +64,8 @@ function Project({id, number, category, title, description, tags, code, notes, c
 }
 
 export default function ProjectsPage() {
+  const describedProjects = githubProjects.filter(project => project.description?.trim());
+
   return (
     <main className="projects-page">
       <header>
@@ -80,7 +82,7 @@ export default function ProjectsPage() {
         <span className="eyebrow">PROJECT INDEX / 2020—NOW</span>
         <h1 id="projects-title">Selected <em>projects.</em></h1>
         <p>Real-time systems, data experiments, and the things I built to learn how they work.</p>
-        <a className="text-link" href="#github-projects">Browse all {githubProjects.length} GitHub projects ↓</a>
+        <a className="text-link" href="#github-projects">Browse {describedProjects.length} GitHub projects ↓</a>
       </section>
 
       <section id="work" className="paper project-list" aria-label="Project directory">
@@ -137,9 +139,8 @@ export default function ProjectsPage() {
             tags="JavaScript / Browser extensions" code={[{repo: 'Copy-Past-Pro'}]}>
             <DomSelectionPreview />
           </Project>
+          <GitHubProjectIndex projects={describedProjects} />
         </section>
-
-        <GitHubProjectIndex projects={githubProjects} />
 
         <section id="certifications" className="certifications" aria-labelledby="certifications-title">
           <div className="section-label"><span>LEARNING RECORD</span><span>CREDENTIALS</span></div>
