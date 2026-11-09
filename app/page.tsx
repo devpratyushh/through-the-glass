@@ -4,8 +4,12 @@ import EarlyRemote from '../components/early-remote';
 import Photography from '../components/photography';
 import SelectedWork from '../components/selected-work';
 import {chapterAt,chapterPositions,journeyDistance} from '../lib/journey';
+import {sitePath} from '../lib/site-path';
+import type {CSSProperties} from 'react';
 import {useEffect,useRef,useState} from 'react';
 const stops=[['The surface','Every image starts somewhere.'],['Beneath the glass','A little further in.'],['Signal & timing','Better, together.'],['Patterns in the noise','Follow the signal.'],['Across the traces','Connections tell a story.'],['The supporting cast','A place for everything.']];
+const chapterCursors = ['tuning', 'screwdriver', 'sync', 'waveform', 'network', 'transistor'];
+
 export default function Home(){
  const stage=useRef<HTMLDivElement>(null),journey=useRef<HTMLElement>(null),progressBar=useRef<HTMLDivElement>(null); const [chapter,setChapter]=useState(0),[closeup,setCloseup]=useState(false),[paused,setPaused]=useState(false),[crtState,setCrtState]=useState<'loading'|'ready'|'unavailable'>('loading');
  useEffect(()=>{
@@ -38,7 +42,10 @@ export default function Home(){
  },[]);
  useEffect(()=>{document.documentElement.dataset.motion=paused?'paused':'on';window.dispatchEvent(new Event('motionchange'))},[paused]);
  return <main><header><a className="wordmark" href="#">p<span>.</span></a><a className="header-note" href="#about">PRATYUSH / PERSONAL EXPLORATIONS</a><nav><a href="#work">Work</a><a href="#photos">Photographs</a><a href="mailto:dev.pratyush@icloud.com">Say hello <span>↗</span></a></nav></header>
- <section className="journey" ref={journey} aria-label="Scroll through an exploded 3D cathode-ray television"><div className="sticky-scene" data-crt-state={crtState}>
+ <section className="journey" ref={journey} aria-label="Scroll through an exploded 3D cathode-ray television">
+ <div className="sticky-scene" data-crt-state={crtState} style={{
+  '--scene-cursor': `url("${sitePath(`/cursors/${chapterCursors[chapter]}.svg`)}") 3 3`,
+ } as CSSProperties}>
  <div ref={stage} className="canvas-stage" aria-hidden="true"/>
  {crtState!=='ready'&&<div className="crt-placeholder">
   <div className="crt-placeholder-screen">

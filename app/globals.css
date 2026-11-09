@@ -169,3 +169,9 @@ a.project-action-primary:hover { background: #3c5140; }
 }
 
 .sticky-scene > .progress { width: 100%; transform: scaleX(0); transform-origin: left; }
+
+@media (any-hover: hover) and (any-pointer: fine) and (forced-colors: none) {
+  body { cursor: var(--site-cursor), auto; }
+  .sticky-scene { cursor: var(--scene-cursor), auto; }
+  :any-link { cursor: pointer; }
+}

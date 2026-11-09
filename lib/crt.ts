@@ -37,8 +37,15 @@ export function mountCRT(
  let hasRendered = false, disposed = false;
  let raf = 0, dirty = true, needsMeasurement = true;
  let target = 0, progress = 0, publishedProgress = -1, previousTime = 0;
+ let pointerTarget = 0, pointerTilt = 0;
  let visible = true;
  let width = 0;
+
+ function trackPointer(event: PointerEvent) {
+  if (event.pointerType === 'touch' || !width) return;
+  pointerTarget = clamp(event.offsetX / width * 2 - 1, -1, 1);
+ }
+ function resetPointer() { pointerTarget = 0; }
 
  function invalidateScroll() {
   needsMeasurement = true;
@@ -61,6 +68,10 @@ export function mountCRT(
  window.addEventListener('motionchange', invalidateScene);
  reduced.addEventListener('change', invalidateScene);
  window.addEventListener('tv-demo', invalidateScene);
+ renderer.domElement.addEventListener('pointermove', trackPointer, {passive:true});
+ renderer.domElement.addEventListener('pointerleave', resetPointer);
+ renderer.domElement.addEventListener('pointercancel', resetPointer);
+ window.addEventListener('blur', resetPointer);
 
  function render(time: number) {
   raf = requestAnimationFrame(render);
@@ -91,8 +102,13 @@ export function mountCRT(
 
   const p = progress;
   const chapter = chapterAt(p);
+  const desiredTilt = paused ? 0 : pointerTarget;
+  const tilting = pointerTilt !== desiredTilt;
+  pointerTilt = paused || Math.abs(desiredTilt - pointerTilt) < .002
+   ? desiredTilt
+   : lerp(pointerTilt, desiredTilt, 1 - Math.exp(-delta / 90));
   const animating = !paused && (chapter === 0 ? tvDemo.needsOpeningFrame(time) : chapter >= 2 && p < .96);
-  if (!dirty && !moving && !animating) return;
+  if (!dirty && !moving && !tilting && !animating) return;
   dirty = false;
 
   const mobile = width < 800;
@@ -124,8 +140,9 @@ export function mountCRT(
 
   // Bring the faceplate forward for each interactive screen chapter.
   camera.position.lerp(new T.Vector3(mobile ? .3 : 1.5, .2, mobile ? 9.8 : 8.5), tvFocus);
-  root.rotation.y = lerp(root.rotation.y, -.06, tvFocus);
+  root.rotation.y = lerp(root.rotation.y, -.06, tvFocus) + pointerTilt * .045;
   root.rotation.x = lerp(root.rotation.x, 0, tvFocus);
+  root.rotation.z = -pointerTilt * .016;
   root.scale.setScalar(lerp(root.scale.x, mobile ? .82 : 1, tvFocus));
   root.position.y = lerp(root.position.y, mobile ? -1.1 : 0, tvFocus);
   front.position.lerp(new T.Vector3(0, 0, 1), tvFocus);
@@ -183,6 +200,10 @@ export function mountCRT(
  function dispose(){
   if(disposed)return;
   disposed=true;
+  renderer.domElement.removeEventListener('pointermove', trackPointer);
+  renderer.domElement.removeEventListener('pointerleave', resetPointer);
+  renderer.domElement.removeEventListener('pointercancel', resetPointer);
+  window.removeEventListener('blur', resetPointer);
   cancelAnimationFrame(raf);tvDemo.dispose();resizeObserver.disconnect();window.removeEventListener('scroll',invalidateScroll);document.removeEventListener('visibilitychange',invalidateScroll);window.removeEventListener('motionchange',invalidateScene);reduced.removeEventListener('change',invalidateScene);window.removeEventListener('tv-demo',invalidateScene);renderer.domElement.removeEventListener('click',click);scene.traverse(o=>{if(o instanceof T.Mesh||o instanceof T.Line){o.geometry.dispose();const mats=Array.isArray(o.material)?o.material:[o.material];mats.forEach(m=>m.dispose())}});detail.textures.forEach(t=>t.dispose());environment.dispose();texture.dispose();renderer.dispose();renderer.domElement.remove();
  }
 
